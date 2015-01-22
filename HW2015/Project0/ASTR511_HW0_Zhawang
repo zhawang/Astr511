@@ -1,0 +1,69 @@
+import numpy as np
+from astropy.io import fits
+import astroML
+from astroML.datasets import fetch_sdss_S82standards
+from astroML.datasets import fetch_dr7_quasar
+#Load magnitude data of stars and quasars from astroML
+stars = fetch_sdss_S82standards(crossmatch_2mass=True)
+raw_quasars = fetch_dr7_quasar()
+#Keep data of quasars within z<2.5
+quasarsmask = (raw_quasars['redshift']<2.5)
+quasars = raw_quasars[quasarsmask]
+# Load magnitude data of galaxies from http://sdss.physics.nyu.edu/vagc-dr7/vagc2/
+raw_sdss_galaxies = fits.open('object_sdss_imaging.fits')[1].data[::10]
+raw_2mass_galaxies = fits.open('object_twomass.fits')[1].data[::10]
+#Remove data from 2mass with 0 magnitude for chosen bands
+galaxies_mask = (raw_2mass_galaxies['J_M_K20FE']!=0)&(raw_2mass_galaxies['H_M_K20FE']!=0)&(raw_2mass_galaxies['K_M_K20FE']!=0)
+raw2_sdss_galaxies = raw_sdss_galaxies[galaxies_mask]
+twomass_galaxies = raw_2mass_galaxies[:][galaxies_mask]
+#Convert SDSS galaxy data into correct units
+sdss_galaxies = 22.5-2.5*np.log10(raw2_sdss_galaxies[:]['PSFFLUX'])
+
+
+#scatter figures
+import matplotlib.pyplot as plt
+%matplotlib inline
+fig = plt.figure()
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize = (12, 10))
+#set size of points
+sizeofpoints=0.01
+#r^*-i^* vs g^*-r^*
+ax1.scatter(stars['mmu_g']-stars['mmu_r'], stars['mmu_r']-stars['mmu_i'],s=sizeofpoints,color='red',label='Stars')
+ax1.scatter(quasars['mag_g']-quasars['mag_r'], quasars['mag_r']-quasars['mag_i'],s=sizeofpoints,color='blue',marker='o',label='Quasars')
+ax1.scatter(sdss_galaxies[:,1]-sdss_galaxies[:,2],sdss_galaxies[:,2]-sdss_galaxies[:,3],s=sizeofpoints,color='green',label='Galaxies')
+ax1.set_xlim(-0.5, 2)
+ax1.set_ylim(-0.5,3)
+ax1.set_xlabel('$g^*-r^*$', fontsize=18)
+ax1.set_ylabel('$r^*-i^*$', fontsize=18)
+#J-K_s vs g^*-i^*
+ax2.scatter(stars['mmu_g']-stars['mmu_i'], stars['J']-stars['K'],s=sizeofpoints,color='red',label='Stars')
+ax2.scatter(quasars['mag_g']-quasars['mag_i'], quasars['mag_J']-quasars['mag_K'],s=sizeofpoints,color='blue',marker='o',label='Quasars')
+ax2.scatter(sdss_galaxies[:,1]-sdss_galaxies[:,3],twomass_galaxies['J_M_K20FE'][:]-twomass_galaxies['K_M_K20FE'][:],s=sizeofpoints,color='green',label='Galaxies')
+ax2.set_xlim(-1,4.5)
+ax2.set_ylim(-0.5,3)
+ax2.set_xlabel('$g^* - i^*$', fontsize=18)
+ax2.set_ylabel('$J - K_s$', fontsize=18)
+ax2.annotate('QSOs', (-0.2, 2.0), fontsize=12)
+ax2.annotate('galaxies', (1.5, 1.9), fontsize=12)
+ax2.annotate('stars', (2.2, 0.3),fontsize=12)
+#H-K_s vs J-H
+ax3.scatter(stars['J']-stars['H'], stars['H']-stars['K'],s=sizeofpoints,color='red',label='Stars')
+ax3.scatter(quasars['mag_J']-quasars['mag_H'], quasars['mag_H']-quasars['mag_K'],s=sizeofpoints,color='blue',marker='o',label='Quasars')
+ax3.scatter(twomass_galaxies['J_M_K20FE'][:]-twomass_galaxies['H_M_K20FE'][:],twomass_galaxies['H_M_K20FE'][:]-twomass_galaxies['K_M_K20FE'][:],s=sizeofpoints,color='green',label='Galaxies')
+ax3.set_xlim(-0.5,2)
+ax3.set_ylim(-1,2)
+ax3.set_xlabel('$J - H$', fontsize=18)
+ax3.set_ylabel('$H - K_s$', fontsize=18)
+#i^*-K_s vs g^*-i^*
+ax4.scatter(stars['mmu_g']-stars['mmu_i'], stars['mmu_i']-stars['K'],s=sizeofpoints,color='red',label='Stars')
+ax4.scatter(quasars['mag_g']-quasars['mag_i'], quasars['mag_i']-quasars['mag_K'],s=sizeofpoints,color='blue',marker='o',label='Quasars')
+ax4.scatter(sdss_galaxies[:,1]-sdss_galaxies[:,3],sdss_galaxies[:,3]-twomass_galaxies['K_M_K20FE'][:],s=sizeofpoints,color='green',label='Galaxies')
+ax4.set_xlim(-1,4.5)
+ax4.set_ylim(-0.5,6)
+ax4.set_xlabel('$g^* - i^*$', fontsize=18)
+ax4.set_ylabel('$i^* - K_s$', fontsize=18)
+ax4.annotate('QSOs', (-0.5, 3.5), fontsize=12)
+ax4.annotate('galaxies', (1.2, 5.5), fontsize=12)
+ax4.annotate('stars', (2.2, 2.3),fontsize=12)
+
+fig.tight_layout()
